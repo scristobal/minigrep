@@ -1,20 +1,18 @@
 use std::error::Error;
 use std::{env, fs};
 
-pub struct Config<'a> {
-    pub query: &'a String,
-    pub file_path: &'a String,
+pub struct Config {
+    pub query: String,
+    pub file_path: String,
     pub ignore_case: bool,
 }
 
-impl<'a> Config<'a> {
-    pub fn build(args: &'a [String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("not enough arguments");
-        }
+impl Config {
+    pub fn build(args: &mut impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        args.next();
 
-        let query = &args[1];
-        let file_path = &args[2];
+        let query = args.next().ok_or("Didn't get a query string")?;
+        let file_path = args.next().ok_or("Didn't get a file name")?;
 
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
@@ -26,7 +24,7 @@ impl<'a> Config<'a> {
     }
 }
 
-pub fn run<'a>(config: Config<'a>) -> Result<(), Box<dyn Error>> {
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.file_path)?;
 
     let results = if config.ignore_case {
@@ -43,15 +41,10 @@ pub fn run<'a>(config: Config<'a>) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
